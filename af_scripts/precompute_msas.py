@@ -54,6 +54,7 @@ AAAAAA
 
 if __name__ == '__main__':
     os.makedirs(MSA_DIR, exist_ok=True)
+    os.makedirs(LOG_DIR, exist_ok=True)
 
     # filter receptor list and create missing MSAs.
     df = pd.read_csv(RECEPTOR_CSV, index_col=[0,1])
