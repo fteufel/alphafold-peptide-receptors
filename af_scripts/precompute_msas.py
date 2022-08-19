@@ -10,7 +10,7 @@ from tqdm.auto import tqdm
 from multiprocessing import Pool
 import subprocess
 
-RECEPTOR_CSV = '../data/human_receptors.csv'
+RECEPTOR_CSV = '../alphafold-peptide-receptors/data/human_receptors.csv'
 MSA_DIR = '../data/msas'
 MAX_SEQ_LEN = 2000
 AF_CONFIG_STR = '--data_dir=../weights --model_preset=multimer --num_multimer_predictions_per_model=1 --max_template_date=1950-11-01 --run_relax=False --uniref90_database_path=../weights/uniref90/uniref90.fasta --mgnify_database_path=../weights/mgnify/mgy_clusters_2018_12.fa --template_mmcif_dir=../weights/pdb_mmcif/mmcif_files --obsolete_pdbs_path=../weights/pdb_mmcif/obsolete.dat --db_preset=reduced_dbs --small_bfd_database_path=../weights/small_bfd/bfd-first_non_consensus_sequences.fasta --pdb_seqres_database_path=../weights/pdb_seqres/pdb_seqres.txt --uniprot_database_path=../weights/uniprot/uniprot.fasta --use_gpu_relax=False --use_precomputed_msas=True'
@@ -26,7 +26,7 @@ def msa_job(x):
 f""">{rec_id}
 {rec_seq}
 >dummypep
-AAAAAA
+AAA
 """
     )
 
@@ -44,7 +44,7 @@ AAAAAA
 
     try:
         shutil.copytree(msa_path, os.path.join(MSA_DIR, rec_id), dirs_exist_ok=True)
-        shutil.rmtree(rec_id)
+        shutil.rmtree(os.path.join(OUT_DIR, rec_id))
         os.remove(complex_seqs)
     except FileNotFoundError as e:
         print(e)
@@ -57,7 +57,7 @@ if __name__ == '__main__':
     os.makedirs(LOG_DIR, exist_ok=True)
 
     # filter receptor list and create missing MSAs.
-    df = pd.read_csv(RECEPTOR_CSV, index_col=[0,1])
+    df = pd.read_csv(RECEPTOR_CSV)
 
     df = df.loc[df['Sequence'].str.len()<=MAX_SEQ_LEN]
 
