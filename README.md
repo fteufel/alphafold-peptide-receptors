@@ -1,6 +1,7 @@
-# alphafold-peptide-receptors
-Identifying peptide-receptor interactions using AlphaFold-Multimer
+# AlphaFold-Multimer Peptide-Receptor ranking
+Identifying peptide-receptor interactions using AlphaFold-Multimer.
 
+![alphafold_receptors_ranking](https://user-images.githubusercontent.com/56223326/197050884-daa0c071-42b1-4d1c-bbb3-4a2088fbf1cb.png)
 
 ## Prerequisites
 
