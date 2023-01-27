@@ -11,14 +11,14 @@ from multiprocessing import Pool
 import subprocess
 from Bio import SeqIO
 
-NUM_PARALLEL = 6
-RECEPTOR_CSV = '../alphafold-peptide-receptors/data/mouse_receptors.csv'
-PEPTIDE_FASTA = '../alphafold-peptide-receptors/data/pdb_benchmark_peptides.fasta'
-MSA_DIR = '../data/msas'
+NUM_PARALLEL = 2
+RECEPTOR_CSV = '../alphafold-peptide-receptors/data/human_receptors.csv'
+PEPTIDE_FASTA = '../alphafold-peptide-receptors/data/smorfs.fasta'
+MSA_DIR = '../alphafold_data/msas'
 MAX_SEQ_LEN = 2000
-AF_CONFIG_STR = '--data_dir=../weights --model_preset=multimer --num_multimer_predictions_per_model=1 --max_template_date=1950-11-01 --run_relax=False --uniref90_database_path=../weights/uniref90/uniref90.fasta --mgnify_database_path=../weights/mgnify/mgy_clusters_2018_12.fa --template_mmcif_dir=../weights/pdb_mmcif/mmcif_files --obsolete_pdbs_path=../weights/pdb_mmcif/obsolete.dat --db_preset=reduced_dbs --small_bfd_database_path=../weights/small_bfd/bfd-first_non_consensus_sequences.fasta --pdb_seqres_database_path=../weights/pdb_seqres/pdb_seqres.txt --uniprot_database_path=../weights/uniprot/uniprot.fasta --use_gpu_relax=False --use_precomputed_msas=True'
+AF_CONFIG_STR = '--data_dir=../alphafold_data/weights --model_preset=multimer --num_multimer_predictions_per_model=1 --max_template_date=1950-11-01 --run_relax=False --uniref90_database_path=../alphafold_data/weights/uniref90/uniref90.fasta --mgnify_database_path=../alphafold_data/weights/mgnify/mgy_clusters_2022_05.fa --template_mmcif_dir=../alphafold_data/weights/pdb_mmcif/from_einstein/mmcif_files --obsolete_pdbs_path=../alphafold_data/weights/pdb_mmcif/from_einstein/obsolete.dat --db_preset=reduced_dbs --small_bfd_database_path=../alphafold_data/weights/small_bfd/bfd-first_non_consensus_sequences.fasta --pdb_seqres_database_path=../alphafold_data/weights/pdb_mmcif/from_einstein/pdb_seqres.txt --uniprot_database_path=../alphafold_data/weights/uniprot/uniprot.fasta --use_gpu_relax=False --use_precomputed_msas=True'
 OUT_DIR = 'msa_tempdir'
-LOG_DIR = '../logs'
+LOG_DIR = '../alphafold-peptide-receptors/logs'
 
 
 def msa_job(x):
