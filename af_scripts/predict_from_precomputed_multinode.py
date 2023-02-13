@@ -106,6 +106,10 @@ def alphafold_job(manager, msa_dir, log_dir):
 
     pep_id, rec_id, pep_seq, rec_seq, out_dir = manager.get_job()
 
+    # we just do nothing if the database is empty.
+    if pep_id is None:
+        return None
+
 
     # rec_id, pep_id, rec_seq, pep_seq, msa_dir, log_dir = x
     complex_seqs = f'{rec_id}_{pep_id}.fasta'
@@ -160,6 +164,7 @@ def main():
     parser.add_argument('--log_dir', default='logs')
     parser.add_argument('--max_jobs', type=int, default=100)
     parser.add_argument('--job_db', type=str, default = 'alphafold_jobs.sqlite')
+    parser.add_argument('--skip_db_update', action='store_true', help='Do not process input files + out dir and try adding missing to db.')
 
     # PEPTIDE_FASTA = '../data/pdb_benchmark_peptides.fasta'
     # RECEPTOR_CSV = '../data/human_receptors.csv'
@@ -187,34 +192,36 @@ def main():
     os.makedirs(args.out_dir, exist_ok=True)
     os.makedirs(args.log_dir, exist_ok=True)
 
-    already_predicted = os.listdir(args.out_dir)
-    already_predicted = [x for x in already_predicted if 'timings.json' in os.listdir(os.path.join(args.out_dir, x))]
 
     manager = SQLiteJobManager(args.job_db)
+    # manager.reset_failed_jobs()
     
-    
+    if not args.skip_db_update:
     # inputs = []
-    for pep in SeqIO.parse(open(args.peptides), 'fasta'):
-        _, prot_id, pos = pep.name.split('|')
-        pep_id = prot_id + ':' + pos
-        pep_seq = str(pep.seq)
+        already_predicted = os.listdir(args.out_dir)
+        already_predicted = [x for x in already_predicted if 'timings.json' in os.listdir(os.path.join(args.out_dir, x))]
+
+        for pep in SeqIO.parse(open(args.peptides), 'fasta'):
+            _, prot_id, pos = pep.name.split('|')
+            pep_id = prot_id + ':' + pos
+            pep_seq = str(pep.seq)
 
 
-        for idx, row in df.iterrows():
-            rec_id = row['protein_id']
-            rec_seq = row['Sequence']
-            
-            if len(rec_seq)>args.max_seq_len:
-                print(f'Skipping {rec_id}: {len(rec_seq)} AAs.')
-                continue
-            elif f'{rec_id}_{pep_id}' in already_predicted:
-                print(f'Already processed {rec_id}_{pep_id} .')
-                continue
-            else:
-                manager.try_add_job(pep_id, rec_id, pep_seq, rec_seq, args.out_dir)
-                # inputs.append((rec_id, pep_id, rec_seq, pep_seq))
+            for idx, row in df.iterrows():
+                rec_id = row['protein_id']
+                rec_seq = row['Sequence']
+                
+                if len(rec_seq)>args.max_seq_len:
+                    print(f'Skipping {rec_id}: {len(rec_seq)} AAs.')
+                    continue
+                elif f'{rec_id}_{pep_id}' in already_predicted:
+                    print(f'Already processed {rec_id}_{pep_id} .')
+                    continue
+                else:
+                    manager.try_add_job(pep_id, rec_id, pep_seq, rec_seq, args.out_dir)
+                    # inputs.append((rec_id, pep_id, rec_seq, pep_seq))
 
-    for i in range(args.max_jobs):
+    for i in tqdm(range(args.max_jobs), total=args.max_jobs):
         r = alphafold_job(manager, args.msa_dir, args.log_dir)
 
     # with ThreadPoolExecutor(4) as executor:

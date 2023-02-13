@@ -56,7 +56,12 @@ class SQLiteJobManager():
         
             cmd = f"SELECT * FROM af_jobs WHERE status='WAITING'"
             res = cur.execute(cmd)
-            pep_id, rec_id, pep_seq, rec_seq, out_dir, start_date, end_date, status = res.fetchone()
+
+            record =  res.fetchone()
+            if record is None:
+                return None, None, None, None, None
+
+            pep_id, rec_id, pep_seq, rec_seq, out_dir, start_date, end_date, status = record
 
             time = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
             cmd = f"UPDATE af_jobs SET start_date = '{time}', status='RUNNING' WHERE (peptide_name='{pep_id}') AND (receptor_name='{rec_id}')"
@@ -96,7 +101,20 @@ class SQLiteJobManager():
         con = sqlite3.connect(self.db_path)
         cur = con.cursor()
 
-        cmd = f"UPDATE af_jobs SET start_data = 'NaN', end_date = 'NaN', status='WAITING' WHERE (status='FAILED')"
+        cmd = f"UPDATE af_jobs SET start_date = 'NaN', end_date = 'NaN', status='WAITING' WHERE (status='FAILED')"
+        cur.execute(cmd)
+        con.commit()
+        con.close()
+
+    def reset_running_jobs(self):
+        '''
+        Reset all RUNNING jobs to WAITING  
+        Sometimes jobs get stuck in RUNNING, make them restart.
+        '''
+        con = sqlite3.connect(self.db_path)
+        cur = con.cursor()
+
+        cmd = f"UPDATE af_jobs SET start_date = 'NaN', end_date = 'NaN', status='WAITING' WHERE (status='RUNNING')"
         cur.execute(cmd)
         con.commit()
         con.close()
