@@ -6,15 +6,75 @@ import os
 import subprocess
 import glob
 from pdockq import compute_pdockq
+from score_rosetta import score_complex
+
+
+def get_tm_score(pdb_path, template_pdb_path):
+    from tmtools.io import get_structure, get_residue_data
+    from tmtools import tm_align
+
+    s = get_structure(template_pdb_path)
+    chain = next(s.get_chains())
+    cart_coords, cart_seq = get_residue_data(chain)
+
+    s = get_structure(pdb_path)
+    chains = s.get_chains()
+    next(chains)
+    chain = next(chains)
+    coords, seq = get_residue_data(chain)
+
+    res = tm_align(cart_coords, coords, cart_seq, seq)
+
+    return res.tm_norm_chain2
 
 
 
-def extract_af_metrics(pred_folder, 
-                       receptor_chains,
-                       ligand_chains,
-                       receptor_topology_string = None,
-                       relaxed=True,
-                       pred_is_nested=False):
+
+
+def extract_af_metrics(pred_folder: str, 
+                       receptor_chains: List[int],
+                       ligand_chains: List[int],
+                       receptor_topology_string: str = None,
+                       relaxed: bool = True,
+                       run_rosetta: bool = True,
+                       rosetta_path: str = None,
+                       database_path: str = None,
+                       scoring_xml: str = None,
+                       rosetta_relaxed_dir: str = None,
+                       rosetta_log_dir: str = None,
+                       pred_is_nested: bool = False,
+                       peptide_template_pdb: str = None,
+                       ):
+    '''
+    Extract ranking metrics from an AlphaFold-Multimer result.
+
+    pred_folder: 
+        result directory (AlphaFold output)
+    receptor_chains:
+        chain ids belonging to the receptor
+    ligand_chains:
+        chain ids belonging to the peptide
+    receptor_topology_string:
+        DeepTMHMM predicted topology for the receptor
+    relaxed:
+        Whether the AlphaFold results was relaxed or not.
+    run_rosetta:
+        Run rosetta scoring.
+    rosetta_path:
+        Path to the Rosetta executable. If None, defaults to what is specified in score_rosetta.py
+    database_path:
+        Path to the Rosetta databases. If None, defaults to what is specified in score_rosetta.py
+    scoring_xml:
+        Path to the Rosetta scoring script. If None, defaults to what is specified in score_rosetta.py
+    rosetta_relaxed_dir:
+        Path to a directory to save Rosetta relaxed PDB files. If None, defaults to what is specified in score_rosetta.py
+    rosetta_log_dir:
+        Path to a log directory for Rosetta output. If None, defaults to what is specified in score_rosetta.py
+    pred_is_nested:
+        (Legacy) indicates that pred_folder contains the results in subdirectories
+    peptide_template_pdb:
+        A PDB file of the ligand. If provided, report TMscore to this structure in the output. Requires tmtools.
+    '''
     
     df = pd.DataFrame({})
     relaxed_str = 'relaxed' if relaxed else 'unrelaxed'
@@ -30,11 +90,14 @@ def extract_af_metrics(pred_folder,
     
 
     for pdb_file in pdb_files:
-        model_num = pdb_file.split('/')[-1].split('_')[2]
+        _, _, model_id, _, _, _, sample_id = pdb_file.split('/')[-1].split('_')
+        sample_id = sample_id.split('.')[0]
+        model_num = f'{model_id}-{sample_id}'
         df.at[model_num, 'pred_folder'] = pred_folder
         
         # Open pickle file
-        pickle_file = [f for f in glob.glob(os.path.join( os.path.dirname(pdb_file), 'result_model_' + str(model_num) + '*.pkl'))][0]
+        #pickle_file = [f for f in glob.glob(os.path.join( os.path.dirname(pdb_file), 'result_model_' + str(model_num) + '*.pkl'))][0]
+        pickle_file = os.path.join( os.path.dirname(pdb_file), f'result_model_{model_id}_multimer_v2_pred_{sample_id}.pkl')
         prediction = pd.read_pickle(pickle_file)
 
         df.at[model_num, 'pdockq'] = compute_pdockq(pdb_file, pickle_file)
@@ -81,6 +144,23 @@ def extract_af_metrics(pred_folder,
                 transmembrane_contact_count = (labels[receptor_res_in_contact] == 'M').sum()
                 df.at[model_num, 'contacts_outside'] = extracellular_contact_count
                 df.at[model_num, 'contacts_inside'] =  intracellular_contact_count
+
+        if peptide_template_pdb is not None:
+            df.at[model_num, 'tm_score'] = get_tm_score(pdb_file, peptide_template_pdb)
+
+        if run_rosetta:
+            rosetta_metrics = score_complex(
+                pdb_file, 
+                rosetta_path = rosetta_path, 
+                database_path = database_path, 
+                scoring_xml = scoring_xml, 
+                relaxed_dir = rosetta_relaxed_dir, 
+                log_dir = rosetta_log_dir
+                )
+            for k, v in rosetta_metrics.items():
+                if k not in ['time', 'user_tag', 'description']:
+                    df.at[model_num, k] = v
+
 
         
             

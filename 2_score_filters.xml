@@ -1,0 +1,139 @@
+<ROSETTASCRIPTS>
+
+###############################################################################################
+### This is meant to be a generic script to perform preliminary scoring with basic filters. ###
+### Currently assumes Peptide = "Chain A" and Protein = "not Chain A"                       ###
+### Authored by KTDB October 2020.                                                          ###
+###############################################################################################
+
+#Do you have waters? If so then be sure to not let the jumps move.
+  
+  <SCOREFXNS>
+    <ScoreFunction name="ref15" weights="ref2015">
+	  <Reweight scoretype="coordinate_constraint" weight="1.0" />
+	  <Reweight scoretype="atom_pair_constraint" weight="1.0" />
+	  <Reweight scoretype="dihedral_constraint" weight="1.0" />
+        <Reweight scoretype="angle_constraint" weight="1.0" />
+    </ScoreFunction>
+
+  </SCOREFXNS>
+  
+  <RESIDUE_SELECTORS>
+#### selecting the chains
+    <Chain name="peptide" chains="%%PeptideChain%%"/>
+	   <Not name="not_peptide" >
+		  <Chain chains="%%PeptideChain%%"/>
+	   </Not>
+
+### selecting the interface around
+    <Neighborhood name="interface" selector="peptide" distance="10.0"/>
+	<And name="interface_B" selectors="interface,not_peptide"/>
+        <Or name="pep_int" selectors="interface,peptide"/>
+	<Not name="protein_nointerface" selector="interface" />
+
+        ### select interface of chainA close within 10.0 A of chainB
+        <Neighborhood name="interface_chA" selector="not_peptide" distance="10.0"/>
+        ### select intersection of chain A and Chain B interface
+        <And name="AB_interface" selectors="interface,interface_chA"/>
+        ### selects interface residues that are just chain A
+        <And name="binding_site" selectors="AB_interface,not_peptide"/>
+
+  </RESIDUE_SELECTORS>
+	
+  <TASKOPERATIONS>
+### setting up the repackable regions so that the protein does not get designed and only parts around binder repack
+  	<OperateOnResidueSubset name="no_repack_except_interface" selector="protein_nointerface">
+	     <PreventRepackingRLT/>
+	 </OperateOnResidueSubset>
+
+  </TASKOPERATIONS>
+	
+  <FILTERS>
+  
+### calculate total score
+    	<ScoreType name="total_energy" scorefxn="ref15" score_type="total_score" confidence="0" threshold="100000"/>
+
+### calculate SC
+		<ShapeComplementarity name="shape_complementarity" confidence="0" write_int_area="true" residue_selector1="peptide" residue_selector2="not_peptide" />
+	
+### ddG w/ and w/o repack/min beta score function
+        <Ddg name="ddg"  jump="1" repeats="5" repack="1" confidence="0" scorefxn="ref15"/>
+        <Ddg name="ddg_norepack"  jump="1" repeats="1" repack="0" confidence="0" scorefxn="ref15"/>
+
+### Computes the sasa specifically in the interface: total, hydrophobic, and polar
+        <Sasa name="interface_buried_sasa" confidence="0"/>
+        <Sasa name="interface_hydrophobic_sasa" confidence="0" hydrophobic="True"/>
+        <Sasa name="interface_polar_sasa" confidence="0" polar="True"/>
+
+## score of peptide alone, no target present
+        <ScorePoseSegmentFromResidueSelectorFilter
+          name="peptide_score"
+          in_context="0"
+          residue_selector="peptide"
+          scorefxn="ref15"
+          confidence="0" />
+
+### calculate contact MS
+### the new contact moleuclar surface
+        <ContactMolecularSurface
+          name="contact_MS"
+          min_interface="0"
+          distance_weight="1.0"
+          verbose="1"
+          target_selector="binding_site"
+          binder_selector="peptide"
+          confidence="0" />
+### RMSD
+	<Rmsd name="rmsd" chains="%%PeptideChain%%"/>
+
+  </FILTERS>
+	
+#set up movemap for fastrelax peptide backbone
+  <JUMP_SELECTORS>
+		<JumpIndex name="fixed_jumps" jump="1" />
+        	<Not name="movable_jumps" selector="fixed_jumps" />
+  </JUMP_SELECTORS>
+
+  <MOVE_MAP_FACTORIES>
+        <MoveMapFactory name="frlx_mm_factory" bb="false" chi="false" jumps="false">
+            <Backbone residue_selector="peptide" />
+            <Chi residue_selector="peptide" />
+            <Jumps jump_selector="movable_jumps" />
+        </MoveMapFactory>
+  </MOVE_MAP_FACTORIES>
+
+  <MOVERS>
+              
+
+
+	<FastRelax name="relax" repeats="1" scorefxn="ref15" movemap_factory="frlx_mm_factory" />
+
+    FastRelax name="relax" scorefxn="ref15" repeats="2" task_operations="no_repack_except_interface" cartesian="false">
+          MoveMap name="moveit">
+                Chain number="1" chi="1" bb="1"/>
+                Chain number="2" chi="0" bb="0"/>
+                Jump number="1" setting="0"/>
+          /MoveMap>
+    /FastRelax>
+
+  </MOVERS>
+ 
+  <PROTOCOLS>
+
+### Relax
+Add mover="relax"/>		
+
+### Fliters/Scores
+    <Add filter="total_energy"/>
+    <Add filter="contact_MS"/>
+		<Add filter="shape_complementarity"/>
+	  <Add filter="ddg"/>
+    <Add filter="ddg_norepack"/>
+    <Add filter="interface_buried_sasa"/>
+    <Add filter="interface_hydrophobic_sasa"/>
+	  <Add filter="interface_polar_sasa"/>
+	  <Add filter="peptide_score"/>
+	  Add filter="rmsd"/>
+  </PROTOCOLS>
+  <OUTPUT scorefxn="ref15" />
+</ROSETTASCRIPTS>
