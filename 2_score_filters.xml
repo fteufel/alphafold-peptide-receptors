@@ -10,10 +10,10 @@
   
   <SCOREFXNS>
     <ScoreFunction name="ref15" weights="ref2015">
-	  <Reweight scoretype="coordinate_constraint" weight="1.0" />
+<!-- 	  <Reweight scoretype="coordinate_constraint" weight="1.0" />
 	  <Reweight scoretype="atom_pair_constraint" weight="1.0" />
 	  <Reweight scoretype="dihedral_constraint" weight="1.0" />
-        <Reweight scoretype="angle_constraint" weight="1.0" />
+        <Reweight scoretype="angle_constraint" weight="1.0" /> -->
     </ScoreFunction>
 
   </SCOREFXNS>
