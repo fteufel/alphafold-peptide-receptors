@@ -12,7 +12,7 @@ import subprocess
 from Bio import SeqIO
 
 NUM_PARALLEL = 6
-RECEPTOR_CSV = '../alphafold-peptide-receptors/data/mouse_receptors.csv'
+RECEPTOR_CSV = '../alphafold-peptide-receptors/data/human_receptors.csv'
 PEPTIDE_FASTA = '../alphafold-peptide-receptors/data/pdb_benchmark_peptides.fasta'
 MSA_DIR = '../data/msas'
 MAX_SEQ_LEN = 2000
