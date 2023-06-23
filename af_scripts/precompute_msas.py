@@ -71,8 +71,6 @@ if __name__ == '__main__':
     jobs = []
     for idx, row in df.iterrows():
 
-        if row['protein_id'] != 'P35456':
-            continue
         seq_name = row['protein_id']
         if seq_name in already_predicted:
             continue
