@@ -7,7 +7,7 @@ import subprocess
 import glob
 from pdockq import compute_pdockq
 from score_rosetta import score_complex
-
+from typing import List
 
 def get_tm_score(pdb_path, template_pdb_path):
     from tmtools.io import get_structure, get_residue_data
